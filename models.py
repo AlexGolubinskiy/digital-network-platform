@@ -173,5 +173,5 @@ class SystemEvent:
     event_id: str
     event_type: EventType
     data: dict
-    timestamp: datetime = field(default_factory=datetime.now)
     source: str = "Unknown"
+    timestamp: datetime = field(default_factory=datetime.now)
