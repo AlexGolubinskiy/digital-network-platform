@@ -161,3 +161,19 @@ class MaintenanceTask:
     status: MaintenanceStatus = MaintenanceStatus.OPEN
     created_at: datetime = field(default_factory=datetime.now)
     metadata: dict = field(default_factory=dict)
+# ============================================================
+# EVENT BUS MODELS
+# ============================================================
+from enum import Enum
+
+class EventType(Enum):
+    SIGNAL_DATA_RECEIVED = "signal_data_received"
+    ALARM_CREATED = "alarm_created"
+    RISK_UPDATED = "risk_updated"
+    MAINTENANCE_CREATED = "maintenance_created"
+
+@dataclass
+class SystemEvent:
+    event_type: EventType
+    data: dict
+    timestamp: datetime = field(default_factory=datetime.now)
