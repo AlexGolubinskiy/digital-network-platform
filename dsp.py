@@ -1,13 +1,3 @@
-"""
-=======================================================================
-DIGITAL NETWORK PLATFORM v1.0
-
-DSP ENGINE
-
-Digital Signal Processing Layer
-=======================================================================
-"""
-
 from __future__ import annotations
 from pathlib import Path
 import numpy as np
@@ -73,3 +63,42 @@ class DSPEngine:
         # Модифицируем сигнал прямо внутри существующего контейнера данных (In-place)
         audio.signal = filtered
         return audio
+
+class GCCPhat:
+    """Математическое ядро обобщенной взаимной корреляции (Generalized Cross-Correlation)."""
+
+    @staticmethod
+    def estimate_delay(signal1: np.ndarray, signal2: np.ndarray, sample_rate: int) -> float:
+        """Расчет временной задержки между двумя сигналами с параболической интерполяцией субдискретного пика."""
+        n = max(signal1.size, signal2.size)
+        
+        # Перевод сигналов в частотную область
+        fft1 = np.fft.rfft(signal1, n=n)
+        fft2 = np.fft.rfft(signal2, n=n)
+        
+        # Вычисление взаимного спектра мощности
+        cross_power = fft2 * np.conj(fft1)
+        magnitude = np.abs(cross_power)
+        
+        # Защита от деления на ноль
+        magnitude[magnitude == 0] = 1e-12
+        cross_power /= magnitude
+        
+        # Возврат во временную область (функция взаимной корреляции)
+        correlation = np.fft.irfft(cross_power, n=n)
+        shift = int(np.argmax(correlation))
+        
+        # Квадратичная (параболическая) интерполяция вершины пика для повышения точности
+        left_index = (shift - 1) % n
+        right_index = (shift + 1) % n
+        y_left, y_center, y_right = correlation[left_index], correlation[shift], correlation[right_index]
+        
+        denominator = 2 * y_center - y_left - y_right
+        correction = (y_right - y_left) / (2 * denominator) if denominator != 0 else 0.0
+        refined_shift = shift + correction
+        
+        # Коррекция циклического сдвига
+        if refined_shift > n / 2:
+            refined_shift -= n
+            
+        return float(refined_shift / sample_rate)
