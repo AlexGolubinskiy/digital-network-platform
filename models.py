@@ -1,177 +1,71 @@
-"""
-=======================================================================
-DIGITAL NETWORK PLATFORM v1.0
-
-MODELS LAYER
-
-Базовые структуры данных платформы.
-
-Важно:
-Этот файл НЕ импортирует config.py.
-Он является нижним уровнем архитектуры.
-=======================================================================
-"""
-
 from __future__ import annotations
-from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from uuid import UUID
+from typing import Literal, List, Tuple
+from pydantic import BaseModel, Field, field_validator
 
-# ============================================================
-# NETWORK & SENSOR ENUMS
-# ============================================================
-class NetworkType(Enum):
-    HEAT = "heat"
-    WATER = "water"
-    GAS = "gas"
-    INDUSTRIAL = "industrial"
+# =======================================================================
+# DIGITAL NETWORK PLATFORM v1.0
+# DATA VALIDATION MODELS
+# =======================================================================
 
-class SensorType(Enum):
-    ACOUSTIC = "acoustic"
-    PRESSURE = "pressure"
-    FLOW = "flow"
-    TEMPERATURE = "temperature"
-    VIBRATION = "vibration"
-    GPS = "gps"
+class PipelineModel(BaseModel):
+    """
+    Модель валидации трубопровода для ГИС-карты.
+    Соответствует структуре таблицы 'pipelines' в schema.sql
+    """
+    id: UUID | None = None
+    pipe_number: str = Field(..., description="Инвентарный/номенклатурный номер трубы в Водоканале")
+    material: Literal["steel", "pnd", "iron", "concrete"] = Field(..., description="Материал трубы (важно для DSP фильтров)")
+    diameter_mm: int = Field(..., gt=0, description="Диаметр трубы в миллиметрах (должен быть больше нуля)")
+    length_m: float = Field(..., gt=0, description="Физическая длина участка трубопровода в метрах")
+    install_year: int = Field(..., gte=1900, description="Год укладки сети (фактор износа)")
+    
+    # Геометрия трубы на карте города — список точек LineString: [(широта1, долгота1), (широта2, долгота2), ...]
+    coordinates: List[Tuple[float, float]] = Field(..., min_items=2, description="Массив гео-координат линии трубы")
 
-class DeviceStatus(Enum):
-    ACTIVE = "active"
-    OFFLINE = "offline"
-    MAINTENANCE = "maintenance"
-    ERROR = "error"
+    @field_validator('install_year')
+    @classmethod
+    def validate_year(cls, v: int) -> int:
+        current_year = datetime.now().year
+        if v > current_year:
+            raise ValueError(f"Год укладки не может быть в будущем (максимум {current_year})")
+        return v
 
-class AssetCondition(Enum):
-    NORMAL = "normal"
-    AGING = "aging"
-    CRITICAL = "critical"
 
-class PipeMaterial(Enum):
-    STEEL = "steel"
-    CAST_IRON = "cast_iron"
-    PLASTIC = "plastic"
+class AcousticSensorModel(BaseModel):
+    """
+    Модель валидации физического акустического логгера.
+    Соответствует структуре таблицы 'acoustic_sensors' в schema.sql
+    """
+    id: UUID | None = None
+    device_id: str = Field(..., min_length=3, description="Уникальный заводской ID физического прибора")
+    status: Literal["active", "maintenance", "offline"] = "active"
+    battery_level: int = Field(100, gte=0, lte=100, description="Заряд батареи в процентах")
+    associated_pipe_id: UUID | None = None
+    
+    # Координата установки датчика на карте города (широта, долгота)
+    location: Tuple[float, float] = Field(..., description="Координаты GPS смотрового колодца")
 
-class MaintenanceStatus(Enum):
-    OPEN = "open"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
 
-class EventType(Enum):
-    SIGNAL_DATA_RECEIVED = "signal_data_received"
-    ALARM_CREATED = "alarm_created"
-    RISK_UPDATED = "risk_updated"
-    MAINTENANCE_CREATED = "maintenance_created"
+class SignalRecord(BaseModel):
+    """
+    Архивная карточка акустического сигнала и результатов предиктивного анализа.
+    Соответствует структуре таблицы 'sensor_telemetry' в schema.sql
+    """
+    record_id: str = Field(..., description="Уникальный UUID записи замера")
+    device_id: str = Field(..., description="ID датчика, приславшего сигнал")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Время фиксации сигнала")
+    
+    # Метрики, рассчитанные вашим приватным DSP-ядром core_analytics.py
+    rms_amplitude: float = Field(..., gte=0.0, description="Энергия звука в трубе (RMS)")
+    crest_factor: float = Field(..., gte=0.0, description="Пик-фактор (характер шума)")
+    dominant_frequency: float = Field(..., gte=0.0, lte=22050.0, description="Главная частота свиста утечки в Гц")
+    snr_db: float = Field(..., description="Соотношение сигнал/шум в децибелах")
+    
+    # Результат работы предиктивного искусственного интеллекта
+    leak_probability: float = Field(..., gte=0.0, lte=100.0, description="Вероятность скорого появления свища (0-100%)")
+    file_path: str = Field("emulated.wav", description="Путь к аудиофайлу для верификации")
 
-# ============================================================
-# DATA STRUCTURES & MODEL CLASSES
-# ============================================================
-@dataclass
-class Coordinate:
-    latitude: float
-    longitude: float
-    altitude: float = 0.0
-
-@dataclass
-class Device:
-    device_id: str
-    name: str
-    sensor_type: SensorType
-    coordinate: Coordinate
-    network_type: NetworkType
-    organization: str = "АТЭК"
-    status: DeviceStatus = DeviceStatus.ACTIVE
-    installation_date: Optional[str] = None
-    last_signal_time: Optional[str] = None
-    metadata: dict = field(default_factory=dict)
-
-@dataclass
-class AudioData:
-    signal: object
-    sample_rate: int
-    duration: float = 0.0
-
-@dataclass
-class SignalRecord:
-    record_id: str
-    device_id: str
-    timestamp: datetime
-    frequency: float
-    snr: float
-    probability: float
-    file_path: str
-    metadata: dict = field(default_factory=dict)
-
-@dataclass
-class AnalysisResult:
-    anomaly_detected: bool
-    probability: float
-    description: str
-    parameters: dict = field(default_factory=dict)
-
-@dataclass
-class NetworkAsset:
-    asset_id: str
-    name: str
-    length: float
-    installation_year: int
-    material: PipeMaterial
-    sensor_ids: list[str]
-    metadata: dict = field(default_factory=dict)
-
-@dataclass
-class AssetRiskResult:
-    asset_id: str
-    risk_score: float
-    condition: AssetCondition
-    factors: dict
-    recommendation: str
-
-@dataclass
-class AlarmLocation:
-    coordinate: Coordinate
-    distance_from_start: float
-    confidence: float
-
-@dataclass
-class Alarm:
-    alarm_id: str
-    device_id: str
-    network_type: NetworkType
-    location: AlarmLocation
-    analysis: AnalysisResult
-    created_at: datetime
-    status: str = "active"
-
-@dataclass
-class LocalizationResult:
-    delay_seconds: float
-    distance_to_leak: float
-    valid: bool
-    confidence: float = 0.0
-
-@dataclass
-class PredictionResult:
-    device_id: str
-    risk_score: float
-    trend: str
-    factors: dict = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.now)
-
-@dataclass
-class MaintenanceTask:
-    task_id: str
-    asset_id: str
-    priority: str
-    description: str
-    status: MaintenanceStatus = MaintenanceStatus.OPEN
-    created_at: datetime = field(default_factory=datetime.now)
-    metadata: dict = field(default_factory=dict)
-
-@dataclass
-class SystemEvent:
-    event_id: str
-    event_type: EventType
-    data: dict
-    source: str = "Unknown"
-    timestamp: datetime = field(default_factory=datetime.now)
+    class Config:
+        from_attributes = True
