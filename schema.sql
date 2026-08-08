@@ -1,11 +1,11 @@
 -- ============================================================================
--- SQL SCHEMA FOR DIGITAL NETWORK PLATFORM "ЦРО" v1.0 (AI & PostGIS Optimized)
+-- SQL SCHEMA FOR DIGITAL NETWORK PLATFORM "ЦРО" v1.1 (Production AI & PostGIS)
 -- Database: PostgreSQL 15+ + PostGIS Extension
 -- Patent Application: No. 2026160185 (IPC G01M 3/24)
 -- Author: Alex Golubinskiy (c) 2026
 -- ============================================================================
 
--- Включение расширений: UUID и PostGIS (Критический маркер ГИС-платформы для ФСИ)
+-- Включение расширений: UUID и PostGIS (Обязательный маркер ГИС-платформы для ФСИ)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "postgis";
 
@@ -13,6 +13,8 @@ CREATE EXTENSION IF NOT EXISTS "postgis";
 CREATE TYPE asset_material_type AS ENUM ('STEEL', 'CAST_IRON', 'HDPE_PLASTIC');
 CREATE TYPE economic_impact_level AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
 CREATE TYPE task_priority_status AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+-- Новый тип для разделения режимов работы ИИ конвейера (Решает проблему Противоречия №1)
+CREATE TYPE ai_processing_mode AS ENUM ('BATCH_SCHEDULED', 'REALTIME_EMERGENCY');
 
 -- 2. INFRASTRUCTURE ASSETS TABLE (Слой пространственных ГИС-данных)
 CREATE TABLE network_assets (
@@ -23,8 +25,7 @@ CREATE TABLE network_assets (
     length_meters NUMERIC(10, 2) NOT NULL,                    -- Длина контролируемого участка
     criticality_level economic_impact_level DEFAULT 'MEDIUM', -- Весовой коэффициент ущерба (Матрица КИИ)
     
-    -- НАСТОЯЩИЙ ПОСТГИС: Хранение полноценной геометрии трубы как пространственной линии
-    -- SRID 4326 — это стандартная мировая система координат GPS (WGS 84)
+    -- НАСТОЯЩИЙ ПОСТГИС: Хранение геометрии трубы как пространственной линии WGS 84
     geom GEOMETRY(LineString, 4326) NOT NULL, 
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -45,22 +46,28 @@ CREATE TABLE iot_sensors (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. HYDROACOUSTIC PACKETS STORAGE (Реестр сырых данных и первичного DSP)
+-- 4. HYDROACOUSTIC PACKETS STORAGE (Реестр метаданных и извлеченных DSP-фич)
 CREATE TABLE sensor_telemetry_packets (
     packet_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     sensor_id VARCHAR(50) NOT NULL REFERENCES iot_sensors(sensor_id) ON DELETE CASCADE,
-    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL,            -- Таймстамп записи (строго 03:00 ночи)
+    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL,            -- Таймстамп физической записи звука на датчике
     received_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Таймстамп фактического приема сервером
     
-    -- Первичные DSP метрики (соответствуют вашему новому TelemetrySignalInput в Pydantic)
+    -- Первичные DSP метрики (соответствуют вашему TelemetrySignalInput в Pydantic)
     rms_amplitude NUMERIC(8, 4) NOT NULL,                     -- Энергия звука в трубе
     crest_factor NUMERIC(6, 3) NOT NULL,                      -- Пик-фактор (характер шума)
     dominant_frequency NUMERIC(7, 2) NOT NULL,                -- Главная частота свиста утечки в Гц
     snr_value NUMERIC(5, 2) NOT NULL,                          -- Отношение сигнал/шум для ИИ-фильтрации
     
-    raw_audio_payload_hex TEXT NOT NULL,                      -- Сжатый бинарный аудио-лог шума свища
+    -- ИСПРАВЛЕНИЕ ОШИБКИ №3 (Бинарное болото): Вместо TEXT payload храним только путь к файлу в S3/MinIO
+    audio_file_s3_path VARCHAR(512) NOT NULL,
+    
+    -- ИСПРАВЛЕНИЕ ОШИБКИ №2 (БПЛА/РЭБ): Метаданные для ИИ-алгоритма выравнивания временных рядов (Time Realigning)
     is_delayed_by_uav_attack BOOLEAN DEFAULT FALSE,           -- Флаг РЭБ-буферизации (атака БПЛА / глушение связи)
-    cached_days_count INT DEFAULT 0                           -- Количество дней хранения лога в автономной Flash-памяти
+    cached_days_count INT DEFAULT 0,                          -- Дней удержания во флеш-памяти логгера
+    time_drift_seconds INT DEFAULT 0 NOT NULL,                 -- Расхождение внутренних часов датчика после глушения GPS
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 5. AI LEAK DETECTION & RISK MATRIX OUTPUT (Слой работы искусственного интеллекта)
@@ -69,13 +76,16 @@ CREATE TABLE predictive_maintenance_tasks (
     asset_id UUID NOT NULL REFERENCES network_assets(asset_id) ON DELETE CASCADE,
     trigger_packet_id UUID REFERENCES sensor_telemetry_packets(packet_id) ON DELETE SET NULL,
     
+    -- ИСПРАВЛЕНИЕ ОШИБКИ №1 (Противоречие режимов): Фиксируем, как именно сработал ИИ
+    processing_mode ai_processing_mode NOT NULL DEFAULT 'BATCH_SCHEDULED', 
+    
     -- Метрики аудита ИИ-ядра (Критический блок MLOps для экспертов ФСИ)
     ai_model_name VARCHAR(100) NOT NULL,                      -- Архитектура (CNN-Classifier, XGBoost)
     ai_model_version VARCHAR(30) NOT NULL,                    -- Версия весов модели (например, v1.2.4-prod)
     ai_inference_time_ms NUMERIC(6, 2) NOT NULL,              -- Время расчета инференса сетью
     anomaly_score NUMERIC(4, 3) DEFAULT 0.0,                  -- Индекс аномальности (Unsupervised Outlier)
     
-    -- Результаты предсказаний
+    -- Результаты предсказаний интеллектуального ядра
     leak_detected BOOLEAN DEFAULT FALSE,
     confidence_score NUMERIC(4, 3) CHECK (confidence_score BETWEEN 0 AND 1), -- ИИ индекс уверенности модели
     calculated_distance_meters NUMERIC(10, 2),                -- Субдискретная локализация GCC-PHAT (метры от колодца А)
@@ -90,12 +100,12 @@ CREATE TABLE predictive_maintenance_tasks (
 );
 
 -- ПРОФЕССИОНАЛЬНЫЕ ГИС И ИИ ИНДЕКСЫ ДЛЯ МАКСИМАЛЬНОЙ ПРОИЗВОДИТЕЛЬНОСТИ
--- Пространственные индексы GIST (Позволяют мгновенно искать трубы и датчики на карте города)
+-- Пространственные индексы GIST (Позволяют мгновенно искать трубы и датчики в радиусе на карте города)
 CREATE INDEX idx_assets_geometry ON network_assets USING GIST(geom);
 CREATE INDEX idx_sensors_geometry ON iot_sensors USING GIST(location_geom);
 
 -- Стандартные B-Tree индексы для бизнес-логики и ИИ-аналитики
 CREATE INDEX idx_assets_criticality ON network_assets(criticality_level);
 CREATE INDEX idx_telemetry_sensor_time ON sensor_telemetry_packets(sensor_id, recorded_at DESC);
-CREATE INDEX idx_tasks_ai_audit ON predictive_maintenance_tasks(ai_model_name, ai_model_version);
+CREATE INDEX idx_tasks_ai_audit ON predictive_maintenance_tasks(ai_model_name, ai_model_version, processing_mode);
 CREATE INDEX idx_tasks_priority ON predictive_maintenance_tasks(final_priority_score DESC, is_repaired);
