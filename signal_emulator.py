@@ -1,18 +1,3 @@
-"""
-=======================================================================
-DIGITAL NETWORK PLATFORM v1.0
-
-SIGNAL EMULATOR
-
-Генератор тестовых сигналов утечки.
-
-Используется только для:
-- проверки Pipeline;
-- нагрузочного тестирования;
-- демонстрации MVP.
-=======================================================================
-"""
-
 from __future__ import annotations
 import uuid
 import numpy as np
@@ -29,14 +14,26 @@ def generate_leak_signal(duration: float, sample_rate: int, frequency: float = 8
 
     return signal + noise
 
-def create_signal_record(device_id: str, frequency: float, snr: float, probability: float) -> SignalRecord:
-    """Формирование фиктивной архивной карточки сигнала для тестирования предиктивных трендов."""
+def create_signal_record(
+    device_id: str, 
+    rms_amplitude: float, 
+    crest_factor: float, 
+    dominant_frequency: float, 
+    snr_db: float, 
+    leak_probability: float
+) -> SignalRecord:
+    """
+    Формирование архивной карточки сигнала для тестирования предиктивных трендов.
+    Полностью синхронизировано с Pydantic-моделью SignalRecord.
+    """
     return SignalRecord(
         record_id=str(uuid.uuid4()),
         device_id=device_id,
         timestamp=datetime.now(),
-        frequency=frequency,
-        snr=snr,
-        probability=probability,
+        rms_amplitude=rms_amplitude,
+        crest_factor=crest_factor,
+        dominant_frequency=dominant_frequency,
+        snr_db=snr_db,
+        leak_probability=leak_probability,
         file_path="emulated.wav"
     )
