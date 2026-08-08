@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 # =======================================================================
 # DIGITAL NETWORK PLATFORM v1.0
-# DATA VALIDATION MODELS
+# DATA VALIDATION MODELS & AI INFERENCE PIPELINE
 # =======================================================================
 
 class PipelineModel(BaseModel):
@@ -48,24 +48,65 @@ class AcousticSensorModel(BaseModel):
     location: Tuple[float, float] = Field(..., description="Координаты GPS смотрового колодца")
 
 
-class SignalRecord(BaseModel):
+# -----------------------------------------------------------------------
+# НОВЫЙ ИИ-СЛОЙ ДЛЯ СТРУКТУРИРОВАНИЯ КОНВЕЙЕРА ДАННЫХ ДЛЯ ФСИ
+# -----------------------------------------------------------------------
+
+class TelemetrySignalInput(BaseModel):
     """
-    Архивная карточка акустического сигнала и результатов предиктивного анализа.
-    Соответствует структуре таблицы 'sensor_telemetry' в schema.sql
+    Модель ПРИЕМА сырых/первичных данных от датчика (Вход в ИИ-конвейер).
+    Датчик передает физические метрики, извлеченные на контроллере.
     """
-    record_id: str = Field(..., description="Уникальный UUID записи замера")
-    device_id: str = Field(..., description="ID датчика, приславшего сигнал")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Время фиксации сигнала")
+    device_id: str = Field(..., description="ID физического логгера шума")
+    timestamp: datetime = Field(default_factory=datetime.now)
     
-    # Метрики, рассчитанные вашим приватным DSP-ядром core_analytics.py
+    # Первичные DSP-метрики, извлеченные вашим приватным DSP-ядром
     rms_amplitude: float = Field(..., gte=0.0, description="Энергия звука в трубе (RMS)")
     crest_factor: float = Field(..., gte=0.0, description="Пик-фактор (характер шума)")
     dominant_frequency: float = Field(..., gte=0.0, lte=22050.0, description="Главная частота свиста утечки в Гц")
     snr_db: float = Field(..., description="Соотношение сигнал/шум в децибелах")
     
-    # Результат работы предиктивного искусственного интеллекта
+    # Ссылка на бинарный вектор или аудиофайл для глубокого анализа в dsp.py внутри Prediction Engine
+    raw_signal_chunk: List[float] | None = Field(None, description="Вектор амплитуд сырого аудио для CNN/STFT")
+
+
+class AIModelMetadata(BaseModel):
+    """
+    Архитектурная модель для аудита ИИ-компонентов.
+    Фиксирует, какая именно модель и в какой версии приняла решение в продакшене.
+    """
+    model_id: UUID | str = Field(..., description="Идентификатор развернутой ML/DL модели в реестре моделей")
+    model_name: Literal["Acoustic-CNN-Classifier", "Pipeline-XGBoost-Predictor", "Ensemble-Cascade"] = Field(..., description="Архитектура ИИ")
+    model_version: str = Field(..., description="Версия весов ИИ-модели (например, v1.2.4-prod)")
+    inference_time_ms: float = Field(..., description="Скорость работы инференса на CPU/GPU в миллисекундах")
+
+
+class AIPredictionOutput(BaseModel):
+    """
+    Модель ВЫХОДА ИИ-ядра (Результат работы Prediction/Localization Engine).
+    """
     leak_probability: float = Field(..., gte=0.0, lte=100.0, description="Вероятность скорого появления свища (0-100%)")
-    file_path: str = Field("emulated.wav", description="Путь к аудиофайлу для верификации")
+    anomaly_score: float = Field(..., gte=0.0, lte=1.0, description="Индекс аномальности сигнала (Unsupervised Outlier Detection)")
+    
+    # Метрики высокоточной локализации дефекта (выход core_localization.py)
+    estimated_distance_m: float | None = Field(None, description="Расстояние до свища от датчика А в метрах")
+    confidence_interval_m: float | None = Field(0.5, description="Погрешность локализации (точность, например ±0.5м)")
+    
+    # Ссылка на метаданные ИИ-модели, сделавшей расчет
+    model_info: AIModelMetadata
+
+
+class SignalRecord(BaseModel):
+    """
+    Архивная карточка акустического сигнала и результатов предиктивного анализа.
+    Соответствует структуре таблицы 'sensor_telemetry' в schema.sql.
+    Объединяет вход датчика и ответ ИИ для отображения на веб-карте.
+    """
+    record_id: UUID = Field(..., description="Уникальный UUID записи замера в БД")
+    telemetry: TelemetrySignalInput = Field(..., description="Входящие телеметрические и DSP данные")
+    ai_analysis: AIPredictionOutput = Field(..., description="Результат предиктивного анализа ИИ-ядра")
+    processed_at: datetime = Field(default_factory=datetime.now, description="Время завершения ИИ-анализа на сервере")
+    file_path: str = Field("stored_signals/active.wav", description="Путь к аудиофайлу в хранилище для верификации")
 
     class Config:
         from_attributes = True
