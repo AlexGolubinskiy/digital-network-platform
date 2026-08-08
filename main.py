@@ -2,6 +2,8 @@ from __future__ import annotations
 import asyncio
 import random
 import uvicorn
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from api import app
 from event_bus import event_bus
 from config import settings
@@ -72,18 +74,40 @@ async def trigger_emergency_notification(record):
 
 
 # =======================================================================
-# ТОЧКА СТАРТА И ЗАПУСК СЕРВЕРА
+# СОВРЕМЕННЫЙ ЖИЗНЕННЫЙ ЦИКЛ ПРИЛОЖЕНИЯ (LIFESPAN)
 # =======================================================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Событие, автоматически запускаемое при старте веб-сервера FastAPI."""
-    # Регистрация подписчиков в шине событий event_bus
+@asynccontextmanager
+async def platform_lifespan(app: FastAPI):
+    """
+    Управление запуском и остановкой фоновых задач платформы.
+    Заменяет устаревший on_event('startup') для гарантированного старта воркера.
+    """
+    # Логика, выполняемая ПРИ СТАРТЕ сервера:
+    # Регистрируем подписчиков в шине событий event_bus
     event_bus.subscribe("new_telemetry", log_incident_to_console)
     event_bus.subscribe("critical_alarm", trigger_emergency_notification)
     
-    # Запуск фонового демона опроса датчиков в неблокирующем потоке asyncio
-    asyncio.create_task(sensor_polling_worker())
+    # Запускаем фонового демона опроса датчиков в неблокирующем потоке asyncio
+    worker_task = asyncio.create_task(sensor_polling_worker())
+    
+    yield  # Здесь сервер работает и принимает внешние HTTP-запросы
+    
+    # Логика, выполняемая ПРИ ОСТАНОВКЕ сервера:
+    # Мягко отменяем задачу фонового воркера при выключении контейнера
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        print("[Worker] Фоновый мониторинг успешно остановлен.")
+
+# Привязываем современный lifespan-контекст к нашему приложению FastAPI
+app.router.lifespan_context = platform_lifespan
+
+
+# =======================================================================
+# ТОЧКА СТАРТА
+# =======================================================================
 
 if __name__ == "__main__":
     # Запуск сервера на хосте 0.0.0.0 для корректной маршрутизации портов внутри Docker-контейнера
