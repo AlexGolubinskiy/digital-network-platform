@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # 1. СЕРВИС БАЗЫ ДАННЫХ (PostgreSQL + PostGIS)
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: dnp_postgis_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: digital_network_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Сохраняем данные БД на вашем диске Mac, чтобы они не стирались при перезапуске
+      - pgdata:/var/lib/postgresql/data
+      # Автоматически загружаем вашу структуру таблиц при первом старте
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d digital_network_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. СЕРВИС ВЕБ-СЕРВЕРА (FastAPI MVP + Эмулятор)
+  web:
+    build: .
+    container_name: dnp_fastapi_app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres_password
+      - DB_NAME=digital_network_db
+      - DEBUG_MODE=True
+    volumes:
+      # Привязываем папку для хранения эмулируемых аудиозаписей свищей
+      - ./storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
