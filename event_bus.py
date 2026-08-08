@@ -1,42 +1,54 @@
-"""
-=======================================================================
-DIGITAL NETWORK PLATFORM v1.0
-
-EVENT BUS
-
-Production Event Dispatcher
-=======================================================================
-"""
-
 from __future__ import annotations
-from typing import Callable, Dict, List
-import logging
-from models import SystemEvent, EventType
-
-logger = logging.getLogger("DigitalNetworkPlatform.EventBus")
+import asyncio
+from typing import Callable, Any, Dict, List
 
 class EventBus:
-    """Центральная шина событий с изолированной защитой от падения подписчиков."""
-
+    """
+    Асинхронная шина событий для обмена данными между компонентами системы.
+    Позволяет изолировать логику приема сигналов от отправки алармов.
+    """
     def __init__(self):
-        self.handlers: Dict[EventType, List[Callable]] = {}
+        # Хранилище подписчиков: { "event_type": [callback_function_1, callback_function_2] }
+        self._listeners: Dict[str, List[Callable[[Any], Any]]] = {}
 
-    def subscribe(self, event_type: EventType, handler: Callable):
-        """Регистрация функционального подписчика на тип системного события."""
-        if event_type not in self.handlers:
-            self.handlers[event_type] = []
-        self.handlers[event_type].append(handler)
+    def subscribe(self, event_type: str, listener: Callable[[Any], Any]) -> None:
+        """Подписка модуля (например, модуля алармов) на определенный тип события."""
+        if event_type not in self._listeners:
+            self._listeners[event_type] = []
+        if listener not in self._listeners[event_type]:
+            self._listeners[event_type].append(listener)
 
-    def publish(self, event: SystemEvent):
-        """Каскадная публикация события с журналированием и пропуском ошибок."""
-        listeners = self.handlers.get(event.event_type, [])
-        for handler in listeners:
-            try:
-                handler(event)
-            except Exception as error:
-                logger.exception(
-                    "Event handler error: %s | type=%s",
-                    error,
-                    event.event_type.value
-                )
-                continue
+    def unsubscribe(self, event_type: str, listener: Callable[[Any], Any]) -> None:
+        """Отписка от событий."""
+        if event_type in self._listeners and listener in self._listeners[event_type]:
+            self._listeners[event_type].remove(listener)
+
+    async def publish(self, event_type: str, data: Any) -> None:
+        """
+        Асинхронная публикация события.
+        Мгновенно уведомляет все подписанные модули без блокировки основного потока.
+        """
+        if event_type not in self._listeners:
+            return
+
+        # Запускаем все функции-обработчики параллельно в фоне
+        tasks = [
+            asyncio.create_task(self._execute_listener(listener, data))
+            for listener in self._listeners[event_type]
+        ]
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _execute_listener(self, listener: Callable[[Any], Any], data: Any) -> None:
+        """Вспомогательный метод для безопасного вызова обработчика."""
+        try:
+            if asyncio.iscoroutinefunction(listener):
+                await listener(data)
+            else:
+                listener(data)
+        except Exception as e:
+            # В продакшене здесь должен быть вызов логгера (logger.error)
+            print(f"[EventBus Error] Сбой при обработке события {listener.__name__}: {str(e)}")
+
+# Глобальный экземпляр шины событий для использования во всем приложении
+event_bus = EventBus()
