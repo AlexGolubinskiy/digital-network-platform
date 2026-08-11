@@ -34,25 +34,24 @@
         <a href="#" class="logo">ГЛАВ<span>ЦИФРА</span></a>
         <nav>
             <a href="#features">Технологии</a>
-            <a href="#economics">Эффективность</a>
             <a href="#status">Статус НИОКР</a>
         </nav>
     </header>
 
     <main class="container">
         <section class="hero">
-            <span class="badge">Искусственный Интеллект & DSP</span>
+            <span class="badge">Инжиниринг & Машинное Обучение</span>
             <h1>Цифровой двойник и предиктивная локализация аварий ЖКХ</h1>
             <p>Программная платформа сквозного неразрушающего контроля и субдискретной гео-локализации акустических аномалий на объектах КИИ водоснабжения и теплосетей.</p>
             <a href="https://github.com" target="_blank" class="btn">Изучить MVP на GitHub</a>
         </section>
 
         <section id="features">
-            <h2 style="text-align: center;">Инновационное ИИ-ядро платформы</h2>
+            <h2 style="text-align: center;">Инновационное программное ядро</h2>
             <div class="grid-3">
                 <div class="card">
-                    <h3>Адаптивная ИИ-фильтрация</h3>
-                    <p>Нейросетевые модели в модуле DSP динамически управляют полосовыми фильтрами Баттерворта 4-го порядка, автоматически очищая полезный сигнал от индустриальных шумов мегаполиса.</p>
+                    <h3>Адаптивная DSP-фильтрация</h3>
+                    <p>Модуль обработки сигналов управляет полосовыми фильтрами Баттерворта 4-го порядка, автоматически очищая полезный акустический сигнал от индустриальных шумов мегаполиса.</p>
                 </div>
                 <div class="card">
                     <h3>ML-аппроксимация скоростей</h3>
@@ -60,24 +59,20 @@
                 </div>
                 <div class="card">
                     <h3>Субдискретная локализация</h3>
-                    <p>Алгоритм GCC-PHAT (TDOA) с параболической субсэмпловой интерполяцией вершины пика вычисляет координату скрытой утечки с точностью до 0.5–1 метра на ГИС-карте по формуле Haversine.</p>
+                    <p>Алгоритм GCC-PHAT (TDOA) с параболической субсэмпловой интерполяцией вершины пика вычисляет координату скрытой утечки с точностью до 0.5–1.5 метров на ГИС-карте по формуле Haversine.</p>
                 </div>
             </div>
         </section>
 
+        <!-- БАННЕР СТАТУСА ДЛЯ ЭКСПЕРТОВ ФСИ -->
         <section id="status" class="status-banner">
             <h3 style="margin: 0 0 0.5rem 0;">Текущий статус проекта «Старт-1»</h3>
-
-            <p style="margin: 0; font-size: 0.95rem;">Веб-архитектура на FastAPI полностью переписана и связана с математическим ядром. Интегрирован физически корректный эмулятор сигналов signal_emulator.py.</p>
+            <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">
+                Веб-архитектура на FastAPI полностью переписана и связана с математическим ядром. Интегрирован физически корректный эмулятор сигналов signal_emulator.py.
+                <br><br>
+                <strong>Технология предиктивного контроля защищена заявкой на Патент РФ на изобретение № 2026160185 (приоритет от 21.07.2026).</strong>
+            </p>
         </section>
-   <section id="status" class="status-banner">
-    <h3 style="margin: 0 0 0.5rem 0;">Текущий статус проекта «Старт-1»</h3>
-    <p style="margin: 0; font-size: 0.95rem;">
-        Веб-архитектура на FastAPI связана с математическим ядром. Интегрирован симулятор сигналов. 
-        <b>Технология защищена заявкой на Патент РФ на изобретение № 2026160185 (приоритет от 21.07.2026).</b>
-    </p>
-</section>
-
     </main>
 
     <!-- СЕКЦИЯ КОНТАКТОВ И ОБРАТНОЙ СВЯЗИ -->
@@ -90,7 +85,7 @@
                 <p><strong>Проект:</strong> Интеллектуальная ГИС-платформа «ГлавЦифра»</p>
                 <p><strong>Email для связи:</strong> <a href="mailto:ceo@glavcifra.ru" style="color: #4cc9f0; text-decoration: none; font-weight: bold;">ceo@glavcifra.ru</a></p>
                 <p><strong>Локация:</strong> РФ, г. Новороссийск</p>
-                <p style="margin-top: 30px; font-size: 13px; color: #64748b;">© 2026 ГлавЦифра. Все права защищены. Разработка в рамках грантовой программы ФСИ.</p>
+                <p style="margin-top: 30px; font-size: 13px; color: #64748b;">© 2026 ГлавЦифра. Все права защищены. Разработка в рамках грантовой программы «Старт-1» ФСИ.</p>
             </div>
 
             <!-- Блок формы (используя Formspree) -->
@@ -99,7 +94,7 @@
                 <form action="https://formspree.io" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
                     <input type="text" name="name" placeholder="Ваше имя / Организация" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff;">
                     <input type="email" name="email" placeholder="Ваш Email" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff;">
-                    <textarea name="message" placeholder="Ваш запрос (например, Тест ГИС-платформы для Водоканала)" rows="4" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff; resize: none;"></textarea>
+                    <textarea name="message" placeholder="Ваш запрос (например, Тест ГИС-платформы для Управляющей компании)" rows="4" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff; resize: none;"></textarea>
                     <button type="submit" style="padding: 12px; border-radius: 5px; border: none; background: #4cc9f0; color: #000; font-weight: bold; cursor: pointer;">Отправить заявку</button>
                 </form>
             </div>
