@@ -122,3 +122,30 @@
 
 </body>
 </html>
+<!-- СЕКЦИЯ КОНТАКТОВ И ОБРАТНОЙ СВЯЗИ -->
+<footer style="background-color: #0d1b2a; color: #fff; padding: 60px 20px; font-family: sans-serif;">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 40px;">
+        
+        <!-- Блок контактов -->
+        <div style="flex: 1; min-width: 280px;">
+            <h3 style="color: #4cc9f0; margin-bottom: 20px;">Контакты</h3>
+            <p><strong>Проект:</strong> Интеллектуальная ГИС-платформа «ГлавЦифра»</p>
+            <p><strong>Email для связи:</strong> <a href="mailto:ceo@glavcifra.ru" style="color: #fff; text-decoration: underline;">ceo@glavcifra.ru</a></p>
+            <p><strong>Локация:</strong> РФ, г. Новороссийск</p>
+            <p style="margin-top: 20px; font-size: 14px; color: #8d99ae;">© 2026 ГлавЦифра. Все права защищены. Разработка в рамках программы «Старт-ИИ» ФСИ.</p>
+        </div>
+
+        <!-- Блок формы (используя Formspree) -->
+        <div style="flex: 1; min-width: 280px;">
+            <h3 style="color: #4cc9f0; margin-bottom: 20px;">Заказать демонстрацию MVP</h3>
+            <!-- Замените "your_form_id" на ID, который выдаст formspree.io после бесплатной регистрации -->
+            <form action="https://formspree.io" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+                <input type="text" name="name" placeholder="Ваше имя / Организация" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff;">
+                <input type="email" name="email" placeholder="Ваш Email" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff;">
+                <textarea name="message" placeholder="Ваш запрос (например, Тест ГИС-платформы для Водоканала)" rows="4" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff; resize: none;"></textarea>
+                <button type="submit" style="padding: 12px; border-radius: 5px; border: none; background: #4cc9f0; color: #000; font-weight: bold; cursor: pointer;">Отправить заявку</button>
+            </form>
+        </div>
+
+    </div>
+</footer>
