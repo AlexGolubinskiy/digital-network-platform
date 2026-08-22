@@ -3,123 +3,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ГлавЦифра — ГИС-платформа предиктивного неразрушающего контроля</title>
-   <meta name="description" content="Интеллектуальная ГИС-платформа предиктивного неразрушающего контроля и субдискретной локализации акустических аномалий на объектах КИИ ЖКХ.">
-<meta name="keywords" content="ГлавЦифра, ГИС-платформа, течеискание, ЖКХ, Водоканал, Старт-1, предиктивный контроль">
-
-    <style>
-        :root { --primary: #4cc9f0; --bg: #0d1b2a; --surface: #1b263b; --text: #fff; }
-        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #0b132b; }
-        .logo { font-size: 1.5rem; font-weight: bold; color: var(--text); text-decoration: none; }
-        .logo span { color: var(--primary); }
-        nav a { color: #8d99ae; text-decoration: none; margin-left: 1.5rem; font-size: 0.95rem; }
-        nav a:hover { color: var(--text); }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-        .hero { padding: 5rem 0; text-align: center; }
-        .badge { background: #ffeedb; color: #64748b; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
-        h1 { font-size: 2.5rem; margin: 1rem 0; }
-        .hero p { color: #8d99ae; max-width: 800px; margin: 0 auto 2rem; line-height: 1.6; }
-        .btn { background: var(--primary); color: #000; padding: 0.8rem 1.8rem; border-radius: 5px; text-decoration: none; font-weight: bold; }
-        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 3rem; }
-        .card { background: var(--surface); padding: 2rem; border-radius: 8px; border: 1px solid #1c2541; }
-        .card h3 { color: var(--primary); margin-top: 0; }
-        .card p { color: #8d99ae; font-size: 0.95rem; line-height: 1.5; margin-bottom: 0; }
-        .status-banner { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.5rem; padding: 1.5rem; margin-top: 3rem; text-align: center; color: #1e40af; }
-    </style>
+    <title>ГЛАВЦИФРА — Личный кабинет диспетчера КИИ ЖКХ</title>
     
-    <!-- ЧАСТЬ 1: АСИНХРОННЫЙ СКРИПТ АНАЛИТИКИ LIVEINTERNET -->
-    <script async custom-element="amp-analytics" src="https://ampproject.org"></script>
+    <!-- Подключаем карту Leaflet (OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <script src="https://unpkg.com"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #121824;
+            --panel-bg: #1e2640;
+            --text-main: #ffffff;
+            --text-muted: #8a99ad;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --border-color: #2e3a59;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* ОСНОВНОЙ РАБОЧИЙ ШАБЛОН КОНСОЛИ */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            height: 100vh;
+        }
+
+        /* БОКОВАЯ ДИСПЕТЧЕРСКАЯ ПАНЕЛЬ ИНФОРМАЦИИ */
+        .sidebar {
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 1000;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .logo-area h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 1px;
+            color: var(--text-main);
+        }
+
+        .logo-area span {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+
+        /* КАРТОЧКА АВАРИЙНОГО ПРЕДИКТА ИИ */
+        .alarm-card {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .alarm-card h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent-red);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+        }
+
+        .param-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .param-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .param-list li span:first-child {
+            color: var(--text-muted);
+        }
+
+        .param-list li span:last-child {
+            font-weight: 600;
+        }
+
+        /* СПИСОК МОНИТОРИНГА ТРУБОПРОВОДОВ */
+        .asset-section {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .asset-section h4 {
+            margin: 0 0 10px 0;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .asset-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .asset-item:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: #4a5a80;
+        }
+
+        .asset-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .status-badge.critical { background: var(--accent-red); color: white; }
+        .status-badge.normal { background: var(--accent-green); color: white; }
+
+        /* ИНТЕРАКТИВНОЕ ГИС-ПОЛЕ КАРТЫ */
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
 </head>
 <body>
 
-    <header>
-        <a href="#" class="logo">ГЛАВ<span>ЦИФРА</span></a>
-        <nav>
-            <a href="#features">Технологии</a>
-            <a href="#status">Статус НИОКР</a>
-        </nav>
-    </header>
-
-    <main class="container">
-        <section class="hero">
-            <span class="badge">Инжиниринг & Машинное Обучение</span>
-            <h1>Цифровой двойник и предиктивная локализация аварий ЖКХ</h1>
-            <p>Программная платформа сквозного неразрушающего контроля и субдискретной гео-локализации акустических аномалий на объектах КИИ водоснабжения и теплосетей.</p>
-            <a href="https://github.com" target="_blank" class="btn">Изучить MVP на GitHub</a>
-        </section>
-
-        <section id="features">
-            <h2 style="text-align: center;">Инновационное программное ядро</h2>
-            <div class="grid-3">
-                <div class="card">
-                    <h3>Адаптивная DSP-фильтрация</h3>
-                    <p>Модуль обработки сигналов управляет полосовыми фильтрами Баттерворта 4-го порядка, автоматически очищая полезный акустический сигнал от индустриальных шумов мегаполиса.</p>
-                </div>
-                <div class="card">
-                    <h3>ML-аппроксимация скоростей</h3>
-                    <p>Регрессионные модели v_sound_regressor на базе XGBoost заменяют классические гидродинамические уравнения, предсказывая точную скорость звука в трубе с учетом износа, материала и давления среды.</p>
-                </div>
-                <div class="card">
-                    <h3>Субдискретная локализация</h3>
-                    <p>Алгоритм GCC-PHAT (TDOA) с параболической субсэмпловой интерполяцией вершины пика вычисляет координату скрытой утечки с точностью до 0.5–1.5 метров на ГИС-карте по формуле Haversine.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- БАННЕР СТАТУСА ДЛЯ ЭКСПЕРТОВ ФСИ -->
-        <section id="status" class="status-banner">
-            <h3 style="margin: 0 0 0.5rem 0;">Текущий статус проекта «Старт-1»</h3>
-            <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">
-                Веб-архитектура на FastAPI полностью переписана и связана с математическим ядром. Интегрирован физически корректный эмулятор сигналов signal_emulator.py.
-                <br><br>
-                <strong>Технология предиктивного контроля защищена заявкой на Патент РФ на изобретение № 2026160185 (приоритет от 21.07.2026).</strong>
-            </p>
-        </section>
-    </main>
-
-    <!-- СЕКЦИЯ КОНТАКТОВ И ОБРАТНОЙ СВЯЗИ -->
-    <footer style="background-color: #0b132b; color: #fff; padding: 60px 20px; font-family: system-ui, sans-serif; margin-top: 50px; border-top: 1px solid #1c2541;">
-        <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 40px;">
-            
-            <!-- Блок контактов -->
-            <div style="flex: 1; min-width: 280px;">
-                <h3 style="color: #4cc9f0; margin-bottom: 20px; margin-top: 0;">Контакты</h3>
-                <p><strong>Проект:</strong> Интеллектуальная ГИС-платформа «ГлавЦифра»</p>
-                <p><strong>Email для связи:</strong> <a href="mailto:ceo@glavcifra.ru" style="color: #4cc9f0; text-decoration: none; font-weight: bold;">ceo@glavcifra.ru</a></p>
-                <p><strong>Локация:</strong> РФ, г. Новороссийск</p>
-                <p style="margin-top: 30px; font-size: 13px; color: #64748b;">© 2026 ГлавЦифра. Все права защищены. Разработка в рамках грантовой программы «Старт-1» ФСИ.</p>
+    <div class="dashboard-container">
+        <!-- БОКОВАЯ КУЛИСА КОНТРОЛЯ -->
+        <div class="sidebar">
+            <div class="logo-area">
+                <h2>ГЛАВ<span>ЦИФРА</span></h2>
+                <div class="status-badge normal" style="font-size: 10px;">B2B CONSOLE v1.0</div>
             </div>
 
-            <!-- Блок формы (используя Formspree) -->
-            <div style="flex: 1; min-width: 280px;">
-                <h3 style="color: #4cc9f0; margin-bottom: 20px; margin-top: 0;">Заказать демонстрацию MVP</h3>
-                <form action="https://formspree.io" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
-                    <input type="text" name="name" placeholder="Ваше имя / Организация" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff;">
-                    <input type="email" name="email" placeholder="Ваш Email" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff;">
-                    <textarea name="message" placeholder="Ваш запрос (например, Тест ГИС-платформы для Управляющей компании)" rows="4" required style="padding: 12px; border-radius: 5px; border: none; background: #1b263b; color: #fff; resize: none;"></textarea>
-                    <button type="submit" style="padding: 12px; border-radius: 5px; border: none; background: #4cc9f0; color: #000; font-weight: bold; cursor: pointer;">Отправить заявку</button>
-                </form>
+            <!-- ИИ ПАНЕЛЬ ПРЕДИКТИВНОГО ОБНАРУЖЕНИЯ -->
+            <div class="alarm-card">
+                <h3>🚨 Верифицированный свищ КИИ</h3>
+                <ul class="param-list">
+                    <li><span>Локация:</span> <span>ул. Мира, д. 14</span></li>
+                    <li><span>От датчика А:</span> <span style="color: var(--accent-red);">42.35 м</span></li>
+                    <li><span>Точность ядра:</span> <span style="color: var(--accent-green);">11.2 см</span></li>
+                    <li><span>ИИ Достоверность:</span> <span>94%</span></li>
+                    <li><span>Предикт прорыва:</span> <span style="color: #f59e0b;">до 15 ноября</span></li>
+                </ul>
+            </div>
+
+            <!-- СПИСОК АКТИВОВ НА УЧЕТЕ ДИСПОЗИТОРА -->
+            <div class="asset-section">
+                <h4>Участки сетей под ИИ-мониторингом</h4>
+                
+                <div class="asset-item" id="asset-active-leak">
+                    <div class="asset-header">
+                        <span>Магистраль Теплосети #4</span>
+                        <span class="status-badge critical">КРИТИЧЕСКИЙ</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Сталь 500мм • 135м • Новороссийск</div>
+                </div>
+
+                <div class="asset-item">
+                    <div class="asset-header">
+                        <span>Водовод Южный Контур #1</span>
+                        <span class="status-badge normal">НОРМА</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">ПНД 300мм • 240м • Новороссийск</div>
+                </div>
             </div>
         </div>
 
-        <!-- ЧАСТЬ 2: АСИНХРОННЫЙ СЧЕТЧИК LIVEINTERNET ВНУТРИ ФУТЕРА -->
-        <div style="margin-top: 30px; text-align: center; border-top: 1px solid #1c2541; padding-top: 20px;">
-            <amp-analytics id="analytics_liveinternet">
-                <script type="application/json">{
-                    "requests": {
-                        "pageview": "https://yadro.ru{ampdocUrl};r${documentReferrer};s${screenWidth}*${screenHeight}*32;h${title};${random}"
-                    },
-                    "triggers": {
-                        "track pageview": {
-                            "on": "visible",
-                            "request": "pageview"
-                        }
-                    }
-                }</script>
-            </amp-analytics>
-        </div>
-    </footer>
+        <!-- ГИС-КАРТА OPENSTREETMAP -->
+        <div id="map"></div>
+    </div>
 
+    <script>
+        // Инициализируем карту OpenStreetMap с центром в Новороссийске на улице Мира
+        var map = L.map('map', {zoomControl: false}).setView([44.7218, 37.7788], 17);
+        L.control.zoom({position: 'topright'}).addTo(map);
+
+        // Подгружаем темный технологический слой карты для b2b-интерфейсов
+        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Реальные координаты колодцев в Новороссийске
+        var wellA = [44.72145, 37.77812];
+        var wellB = [44.72231, 37.77945];
+        var leakPoint = [44.72172, 37.77854]; // Расчетная точка нашего GeoEngine
+
+        // Отрисовка Колодцев А и Б
+        L.circleMarker(wellA, {color: '#3b82f6', radius: 6, fillOpacity: 1}).addTo(map).bindPopup('<b>Акустический Датчик А</b><br>Ул. Мира, Колодец 1');
+        L.circleMarker(wellB, {color: '#3b82f6', radius: 6, fillOpacity: 1}).addTo(map).bindPopup('<b>Акустический Датчик Б</b><br>Ул. Мира, Колодец 2');
+
+        // Рисуем синюю линию трубы между колодцами
+        L.polyline([wellA, wellB], {color: '#3b82f6', weight: 4, opacity: 0.6}).addTo(map);
+
+        // ПОДСВЕЧИВАЕМ ИИ-КРАСНУЮ ТОЧКУ СВИЩА
+        var leakMarker = L.circleMarker(leakPoint, {
+            color: var(--accent-red),
+            fillColor: '#ef4444',
+            fillOpacity: 0.9,
+            radius: 9
+        }).addTo(map);
+        
+        leakMarker.bindPopup('<b>🚨 ВЕРИФИЦИРОВАННЫЙ СВИЩ</b><br>Расстояние: 42.35 м от датчика А<br>Точность локализации: 11.2 см').openPopup();
+
+        // Интерактивный клик по списку трубопроводов для фокуса карты
+        document.getElementById('asset-active-leak').addEventListener('click', function() {
+            map.flyTo(leakPoint, 18, {animate: true, duration: 1.5});
+        });
+    </script>
 </body>
 </html>
